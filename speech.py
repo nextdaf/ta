@@ -1,33 +1,53 @@
+import wave
+import sys
+import pyaudio
 import speech_recognition as sr
 
-recognizer = sr.Recognizer()
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1 if sys.platform == 'darwin' else 2
+RATE = 44100
+RECORD_SECONDS = 5
+OUTPUT_FILE = 'output.wav'
 
-try:
-    with sr.Microphone() as source:
-        print("Adjusting noise...")
-        recognizer.adjust_for_ambient_noise(source, duration=1)
-        print("Recording for 5 seconds...")
-        
-        recorded_audio = recognizer.listen(source, timeout=5)
-        print("Done recording.")
+# Fungsi untuk melakukan transkripsi
+def transcribe_audio(audio_file_path):
+    recognizer = sr.Recognizer()
+
+    with sr.AudioFile(audio_file_path) as source:
+        audio_data = recognizer.record(source)  # Merekam audio dari file
 
         try:
-            print("Recognizing the text...")
-            
-            # Change language to Indonesian
-            text = recognizer.recognize_google(recorded_audio, language="id-ID")
-            
-            print("Decoded Text: {}".format(text))
+            # Menggunakan recognizer dengan bahasa Indonesia
+            text = recognizer.recognize_google(audio_data, language='id-ID')
+            print("Transkripsi:", text)
 
-            # Tambahkan kondisi untuk mencetak "halo" atau "uhuy" berdasarkan teks yang terdeteksi
-            if "halo" in text.lower():
-                print("halo")
-            elif "leo" in text.lower():
-                print("uhuy")
-
+            # Menambahkan kondisi berdasarkan hasil transkripsi
+            if 'halo' in text.lower():
+                print("Halo Leo!")
+            elif 'anjing' in text.lower():
+                print("Mulut Anda Kasar!")
         except sr.UnknownValueError:
-            print("Google Speech Recognition could not understand the audio.")
-except sr.RequestError as e:
-    print(f"Could not request results from Google Speech Recognition service: {e}")
-except Exception as ex:
-    print(f"Error during recognition: {ex}")
+            print("Google Web API tidak dapat mengenali audio")
+        except sr.RequestError as e:
+            print("Terjadi kesalahan pada Google Web API; {0}".format(e))
+
+# Merekam suara
+with wave.open(OUTPUT_FILE, 'wb') as wf:
+    p = pyaudio.PyAudio()
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(p.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+
+    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True)
+
+    print('Katakan Sesuatu...')
+    for _ in range(0, RATE // CHUNK * RECORD_SECONDS):
+        wf.writeframes(stream.read(CHUNK))
+    print('Selesai')
+
+    stream.close()
+    p.terminate()
+
+# Melakukan transkripsi pada file output
+transcribe_audio(OUTPUT_FILE)
